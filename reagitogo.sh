@@ -7,6 +7,9 @@ repository=$2 #submodules-playground
 sha1_ref=$3 #develop
 log_file="$repository_owner-$repository.log"
 
+username=$4
+password=$5
+
 function archive_url {
     local reference=$1
     echo https://github.com/$repository_owner/$repository/archive/$reference.zip
@@ -21,7 +24,7 @@ function download_archive {
     local archive_url=$1
     local archive_file=$2
     
-    curl -L -o $archive_file $archive_url >>$log_file 2>&1 
+    curl -u "$username:$password" -L -o $archive_file $archive_url >>$log_file 2>&1 
     
     echo $archive_file
 }
@@ -75,7 +78,7 @@ function tree {
     
     url="$(tree_base_url)$repository_url"
     
-    curl $url/git/trees/$reference
+    curl -u "$username:$password" $url/git/trees/$reference
 }
 
 archive_file=$(download_archive $(archive_url $sha1_ref) $(archive_filename $sha1_ref))
