@@ -99,12 +99,12 @@ function submodules {
     #less $repository_folder/.gitmodules
     
     #todo
-    echo "submodule1,../submodule1.git;submodule2,../submodule2.git" 
+    echo "submodule1,../submodule1.git" #;submodule2,../submodule2.git" 
 }
 
 function tree_base_url {
     #todo echo https://api.github.com/repos/$repository_owner/$repository
-    echo https://api.github.com/repos/$repository_owner
+    echo https://api.github.com/repos/$repository_owner #todo: https://api.github.com/repos
 }
 
 function tree {
@@ -123,7 +123,7 @@ function tree {
     
     url="$(tree_base_url)$repository_url"
     
-    echo $url/git/trees/$reference
+    #echo $url/git/trees/$reference
     
     curl $url/git/trees/$reference
 }
@@ -132,18 +132,19 @@ function submodule_sha1 {
     local json=$1
     local submodule_name=$2
     
-    echo "SUBMODULE1"
-    echo $submodule_name
-    echo $json
+    #echo "SUBMODULE1"
+    #echo $submodule_name
+    #echo "JSON"
+    #echo $json
     
     local regex="(\{\s*\"path\":\s*\"$submodule_name\",\s*[^}]+\})"
     
     local submodule=$(echo $json | grep -Pzo "(?s)$regex")
     
-    echo "SUBMODULE"
-    echo $submodule
+    #echo "SUBMODULE"
+    #echo $submodule
 
-    regex="\"sha1\":\s*\"\K.+?(?=\")"
+    regex="\"sha\":\s*\"\K.+?(?=\")"
     
     local sha1=$(echo $submodule | grep -Pzo "(?s)$regex")
     
@@ -156,10 +157,9 @@ archive_folder=${archive_file::${#archive_file}-4} #remove .zip
 archive_folder=$(unzip_archive $archive_file $archive_folder)
 delete_archive $archive_file
 
-#todo parse the result to get 665b9b7567eaf2773179598968e1861c746c207c
-tree "../submodules-playground" $sha1_ref
-
 IFS=';' read -r -a submodules_array <<< $(submodules $archive_folder)
+
+json=$(tree "../$repository" $sha1_ref) #todo: temp "../"
 
 for submodule in ${submodules_array[@]}
 do
@@ -167,8 +167,9 @@ do
     path=${submodule_properties[0]}
     url=${submodule_properties[1]}
     
-    json="$(tree $url 665b9b7567eaf2773179598968e1861c746c207c)"
-    sha1=$(submodule_sha1 "$json" "submodule1") # "" for $json since multi lines string
+    sha1=$(submodule_sha1 "$json" "$path") # "" for $json since multi lines string
+    
+    echo $url
     echo $sha1
 done
 
