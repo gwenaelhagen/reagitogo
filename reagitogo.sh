@@ -7,6 +7,8 @@
 repository_url=$1
 sha1_ref=$2 #develop
 zip_result=$3
+username=$4
+password=$5
 cur_dir=$(pwd)
 
 #todo: check params and print use
@@ -47,7 +49,12 @@ function download_archive {
     local archive_url=$1
     local archive_file=$2
     
-    curl -L -o $archive_file $archive_url #>>$log_file 2>&1 
+    if [ "$username" != "" ]
+        then
+            curl -u "$username:$password" -L -o $archive_file $archive_url #>>$log_file 2>&1
+    else
+        curl -L -o $archive_file $archive_url #>>$log_file 2>&1
+    fi
     
     echo $archive_file
 }
@@ -212,8 +219,13 @@ function tree {
     #todo: entreprise url
 
     local url=$api_url$repository_owner/$repository
-    
-    curl $url/git/trees/$reference
+
+    if [ "$username" != "" ]
+        then
+            curl -u "$username:$password" $url/git/trees/$reference
+    else
+        curl $url/git/trees/$reference
+    fi
 }
 
 function submodule_sha1 {
