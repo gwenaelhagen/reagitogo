@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#todo: username/pwd
-
 #todo: print errors
 
 repository_url=$1
