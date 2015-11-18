@@ -230,22 +230,45 @@ function submodule_sha1 {
     local json=$1
     local submodule_name=$2
     
-    local regex="(\{\s*\"path\":\s*\"$submodule_name\",\s*[^}]+\})"
+    local regex="^\K[^\/]+(?=.*)"
+    local submodule_root=$(echo $submodule_name | grep -Pzo "(?s)$regex")
+    
+    regex="^[^\/]+\/\K.+"
+    local submodule_tail=$(echo $submodule_name | grep -Pzo "(?s)$regex")
+    
+    regex="(\{\s*\"path\":\s*\"$submodule_root\",\s*[^}]+\})"
     
     local submodule=$(echo $json | grep -Pzo "(?s)$regex")
 
-    regex="\"sha\":\s*\"\K.+?(?=\")"
+    if [ "$submodule_tail" != "" ]
+        then
+            regex="\"url\":\s*\"\K.+?(?=\")"
+            local url=$(echo $submodule | grep -Pzo "(?s)$regex")
+            
+            if [ "$username" != "" ]
+                then
+                    json=$(curl -u "$username:$password" $url)
+            else
+                json=$(curl $url)
+            fi
+
+            submodule_sha1 "$json" "$submodule_tail"
+    else
+        regex="\"sha\":\s*\"\K.+?(?=\")"
+        local sha1=$(echo $submodule | grep -Pzo "(?s)$regex")
     
-    local sha1=$(echo $submodule | grep -Pzo "(?s)$regex")
-    
-    echo $sha1
+        echo $sha1
+    fi
 }
 
 function handle_repository {
     local repository_url=$1
     local reference=$2
     local archive_filename=$3
-    local parent_repository_url=$4
+    local archive_folder=$4
+    local parent_repository_url=$5
+    
+    local previous_dir=$(pwd)
     
     #remove .git
     if [ "${repository_url:${#repository_url}-4}" = ".git" ]
@@ -265,8 +288,6 @@ function handle_repository {
     fi
 
     local archive_file=$(download_archive $(archive_url $repository_url $reference) $archive_filename)
-    
-    local archive_folder=${archive_file::${#archive_file}-4} #remove .zip
 
     archive_folder=$(unzip_archive $archive_file $archive_folder)
     delete_file $archive_file
@@ -294,10 +315,12 @@ function handle_repository {
             then
                 if [ "$sha1" != "" ]
                     then
-                    handle_repository $url $sha1 "$path.zip" $repository_url
+                        handle_repository $url $sha1 "$sha1.zip" $path $repository_url
                 fi
         fi
     done
+    
+    cd "$previous_dir"
 }
 
 repository_owner=$(repository_owner $repository_url) #gwenaelhagen
@@ -307,11 +330,11 @@ log_file="$cur_dir/$repository_owner-$repository.log"
 
 main_folder=""
 
-archive_name=$repository_owner-$repository-$sha1_ref.zip
+archive_folder=$repository_owner-$repository-$sha1_ref
+archive_name=$archive_folder.zip
 
-handle_repository $repository_url $sha1_ref $archive_name
+handle_repository $repository_url $sha1_ref $archive_name $archive_folder
 
-cd $cur_dir
 cd $main_folder
 
 #todo: delete git files (.git*)
