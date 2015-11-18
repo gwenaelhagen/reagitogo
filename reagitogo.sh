@@ -1,16 +1,15 @@
 #!/bin/bash
 
-#todo: print errors
+#todo: print errors and handle them
 
 repository_url=$1
-sha1_ref=$2 #develop
-zip_result=$3
-username=$4
-password=$5
+sha1_ref=$2 #sha1 or reference (branch name, tag)
+zip_result=$3 #0 or 1
+username=$4 #todo: use a path to a file or env variables instead of username and pasword variables; print -- '-u username:password' > somewhere && curl -K somewhere http://...
+password=$5 #https://www.digitalocean.com/community/tutorials/how-to-read-and-set-environmental-and-shell-variables-on-a-linux-vps
 cur_dir=$(pwd)
 
 #todo: check params and print use
-#todo: handle modules not in root folder
 #todo: respect all rules in submodules function
 #todo: handle spaces in path, handle './' too
 #todo: handle git@ submodules
@@ -18,7 +17,7 @@ cur_dir=$(pwd)
 function repository_base_url {
     local repository_url=$1
     
-    local regex="^\Khttp[s]{0,1}:\/\/github\.com\/(?=.*)"
+    local regex="^\Khttp[s]{0,1}:\/\/[^\/]+\/(?=.*)"
     echo $(echo $repository_url | grep -Pzo "(?s)$regex")
 }
 
@@ -88,7 +87,7 @@ function submodules {
     #submodule.<name>.path
     #Defines the path, relative to the top-level directory of the Git working tree, where the submodule is expected to be checked out. The path name must not end with a /. All submodule paths must be unique within the .gitmodules file.
     #submodule.<name>.url
-    #Defines a URL from which the submodule repository can be cloned. This may be either an absolute URL ready to be passed to git-clone[1] or (if it begins with ./ or ../) a location relative to the superproject’s origin repository.
+    #Defines a URL from which the submodule repository can be cloned. This may be either an absolute URL ready to be passed to git-clone[1] or (if it begins with ./ or ../) a location relative to the superproject?s origin repository.
     #Example:
     #[submodule "libfoo"]
     #    path = include/foo
@@ -211,10 +210,9 @@ function tree {
     
     if [ "$github_url" != "" ] #not http(s)
         then
-            api_url="https://api.github.com/repos/"
+            #api_url="https://api.github.com/repos/" #todo entreprise url or github.com
+            api_url="https://git.autodesk.com/api/v3/repos/"
     fi
-    
-    #todo: entreprise url
 
     local url=$api_url$repository_owner/$repository
 
