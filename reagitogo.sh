@@ -8,10 +8,12 @@ zip_result=$3 #0 or 1
 credentials_file=$4 #'-u username:password'
 cur_dir=$(pwd)
 
+#todo: allow relative path for credentials_file
 #todo: check params and print use
 #todo: respect all rules in submodules function
 #todo: handle spaces in path, handle './' too
 #todo: handle git@ submodules
+#todo: improve regex
 
 function repository_base_url {
     local repository_url=$1
@@ -97,7 +99,6 @@ function submodules {
     #Inside double quotes, double quote " and backslash \ characters must be escaped: use \" for " and \\ for \.
     #The following escape sequences (beside \" and \\) are recognized: \n for newline character (NL), \t for horizontal tabulation (HT, TAB) and \b for backspace (BS). Other char escape sequences (including octal escape sequences) are invalid.
     
-    #todo: improve regex
     local empty_line_regex="^\s*\K.*(?=\s*)"
     local comment_line_regex="^\s*\K#(?=.*)"
     local section_line_regex="^\s*\K\[(?=.*)"
@@ -207,7 +208,7 @@ function tree {
     local repository_owner=$(repository_owner $repository_url) #gwenaelhagen
     local repository=$(repository_name $repository_url) #submodules-playground
     
-    local regex="^http[s]{0,1}:\/\/\K.+"
+    local regex="^http[s]{0,1}:\/\/\K[^\/]+(?=\/{0,1})"
     local github_server=$(echo $github_url | grep -Pzo "(?s)$regex")
     
     if [ "$github_server" != "github.com" ]
