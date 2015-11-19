@@ -5,14 +5,15 @@
 repository_url=$1
 sha1_ref=$2 #sha1 or reference (branch name, tag)
 zip_result=$3 #0 or 1
-username=$4 #todo: use a path to a file or env variables instead of username and pasword variables; print -- '-u username:password' > somewhere && curl -K somewhere http://...
-password=$5 #https://www.digitalocean.com/community/tutorials/how-to-read-and-set-environmental-and-shell-variables-on-a-linux-vps
+credentials_file=$4 #'-u username:password'
 cur_dir=$(pwd)
 
+#todo: allow relative path for credentials_file
 #todo: check params and print use
 #todo: respect all rules in submodules function
 #todo: handle spaces in path, handle './' too
 #todo: handle git@ submodules
+#todo: improve regex
 
 function repository_base_url {
     local repository_url=$1
@@ -46,9 +47,9 @@ function download_archive {
     local archive_url=$1
     local archive_file=$2
     
-    if [ "$username" != "" ]
+    if [ "$credentials_file" != "" ]
         then
-            curl -u "$username:$password" -L -o $archive_file $archive_url #>>$log_file 2>&1
+            curl -K "$credentials_file" -L -o $archive_file $archive_url #>>$log_file 2>&1
     else
         curl -L -o $archive_file $archive_url #>>$log_file 2>&1
     fi
@@ -98,7 +99,6 @@ function submodules {
     #Inside double quotes, double quote " and backslash \ characters must be escaped: use \" for " and \\ for \.
     #The following escape sequences (beside \" and \\) are recognized: \n for newline character (NL), \t for horizontal tabulation (HT, TAB) and \b for backspace (BS). Other char escape sequences (including octal escape sequences) are invalid.
     
-    #todo: improve regex
     local empty_line_regex="^\s*\K.*(?=\s*)"
     local comment_line_regex="^\s*\K#(?=.*)"
     local section_line_regex="^\s*\K\[(?=.*)"
@@ -208,17 +208,21 @@ function tree {
     local repository_owner=$(repository_owner $repository_url) #gwenaelhagen
     local repository=$(repository_name $repository_url) #submodules-playground
     
-    if [ "$github_url" != "" ] #not http(s)
+    local regex="^http[s]{0,1}:\/\/\K[^\/]+(?=\/{0,1})"
+    local github_server=$(echo $github_url | grep -Pzo "(?s)$regex")
+    
+    if [ "$github_server" != "github.com" ]
         then
-            #api_url="https://api.github.com/repos/" #todo entreprise url or github.com
-            api_url="https://git.autodesk.com/api/v3/repos/"
+            api_url="https://$github_server/api/v3/repos/"
+    else
+        api_url="https://api.github.com/repos/"
     fi
 
     local url=$api_url$repository_owner/$repository
 
-    if [ "$username" != "" ]
+    if [ "$credentials_file" != "" ]
         then
-            curl -u "$username:$password" $url/git/trees/$reference
+            curl -K "$credentials_file" $url/git/trees/$reference
     else
         curl $url/git/trees/$reference
     fi
@@ -243,9 +247,9 @@ function submodule_sha1 {
             regex="\"url\":\s*\"\K.+?(?=\")"
             local url=$(echo $submodule | grep -Pzo "(?s)$regex")
             
-            if [ "$username" != "" ]
+            if [ "$credentials_file" != "" ]
                 then
-                    json=$(curl -u "$username:$password" $url)
+                    json=$(curl -K "$credentials_file" $url)
             else
                 json=$(curl $url)
             fi
@@ -280,7 +284,7 @@ function handle_repository {
     
     if [ "$http" == "" ] #not http(s)
         then
-            repository_url=${repository_url:3}
+            repository_url=${repository_url:3} #remove "../"
             local parent_repository_base_url=$(echo $parent_repository_url | grep -Pzo "(?s)^\Khttp[s]{0,1}:\/\/.+\/(?=[^\/]+)")
             repository_url=$parent_repository_base_url$repository_url
     fi
@@ -341,7 +345,6 @@ cd $cur_dir
 
 if [ "$zip_result" == "1" ]
     then
-        cd $cur_dir
         zip -r $archive_name $main_folder >>$log_file 2>&1
         #rm -rf $main_folder >>$log_file 2>&1
 fi
